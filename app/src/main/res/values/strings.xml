@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Music app</string>
+    <string name="song_name_with_artist_name">Song name - with artist name</string>
+    <string name="music_image">music image</string>
+    <string name="play_pause_song_button">play/pause song button</string>
+    <string name="next_song_button">next song button</string>
+    <string name="previous_song_button">previous song button</string>
+</resources>
