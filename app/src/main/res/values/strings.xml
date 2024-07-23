@@ -5,4 +5,6 @@
     <string name="play_pause_song_button">play/pause song button</string>
     <string name="next_song_button">next song button</string>
     <string name="previous_song_button">previous song button</string>
+    <string name="no_song_found">No song found</string>
+    <string name="_00_00">00:00</string>
 </resources>

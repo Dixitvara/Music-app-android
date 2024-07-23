@@ -1,6 +1,8 @@
 package com.project.musicapp;
 
-public class AudioModel {
+import java.io.Serializable;
+
+public class AudioModel implements Serializable {
     String title;
     String duration;
     String path;

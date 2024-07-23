@@ -1,6 +1,7 @@
 package com.project.musicapp;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.os.Bundle;
@@ -14,16 +15,26 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.project.musicapp.singleton.MyMediaPlayer;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
+
 public class MainActivity extends AppCompatActivity {
 
-    TextView songNameTxtView;
-    ImageButton previousSongBtn, nextSongBtn, playSongBtn;
+    TextView songNameTv, currentTimeTv, totalTimeTv;
+    ImageButton previousSongBtn, nextSongBtn, playSongBtn, shuffle, showSongBtn;
     MediaPlayer music;
     SeekBar seekBar;
     Handler handler;
     Runnable updateSeekBar;
 
-    boolean isPlaying = false;
+    AudioModel currentSong;
+    MediaPlayer mediaPlayer = MyMediaPlayer.getInstance();
+
+    ArrayList<AudioModel> songList;
+
     private static final int REQUEST_PERMISSION_READ_EXTERNAL_STORAGE = 1;
 
     @Override
@@ -31,85 +42,112 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        songNameTxtView = findViewById(R.id.songName);
+        songNameTv = findViewById(R.id.songName);
+        totalTimeTv = findViewById(R.id.totalTimeTv);
+        currentTimeTv = findViewById(R.id.currentTimeTV);
         previousSongBtn = findViewById(R.id.prevSongBtn);
         playSongBtn = findViewById(R.id.playBtn);
         nextSongBtn = findViewById(R.id.nextSongBtn);
+        showSongBtn = findViewById(R.id.viewSongs);
+        shuffle = findViewById(R.id.shuffle);
         seekBar = findViewById(R.id.seekBar);
 
-        if (!checkPermission()) {
-            requestPermission();
-            return;
-        }
-
-        music = MediaPlayer.create(this, R.raw.song);
-
+        music = new MediaPlayer();
         handler = new Handler();
-        updateSeekBar = new Runnable() {
+
+        songList = (ArrayList<AudioModel>) getIntent().getSerializableExtra("SONGS");
+
+        songNameTv.setSelected(true);
+        setResourcesWithMusic();
+
+        MainActivity.this.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                if (music != null) {
-                    int currentPosition = music.getCurrentPosition();
-                    int totalDuration = music.getDuration();
-                    seekBar.setProgress(currentPosition * 100 / totalDuration);
-                    handler.postDelayed(this, 1000);
+                if (mediaPlayer != null) {
+                    seekBar.setProgress(mediaPlayer.getCurrentPosition());
+                    currentTimeTv.setText(milliSecondsToMinutes(mediaPlayer.getCurrentPosition() + ""));
                 }
+                new Handler().postDelayed(this, 100);
+                if (mediaPlayer.isPlaying())
+                    playSongBtn.setImageResource(R.drawable.pause);
+                else
+                    playSongBtn.setImageResource(R.drawable.play);
             }
-        };
+        });
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (fromUser) {
-                    int newPosition = music.getDuration() * progress / 100;
-                    music.seekTo(newPosition);
-                }
+                if (fromUser)
+                    music.seekTo(progress);
             }
 
             @Override
             public void onStartTrackingTouch(SeekBar seekBar) {
-                if (music.isPlaying())
-                    music.pause();
             }
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                music.start();
             }
         });
 
         playSongBtn.setOnClickListener(v -> {
-            if (isPlaying) {
-                music.pause();
-                playSongBtn.setImageResource(R.drawable.play);
-                handler.removeCallbacks(updateSeekBar);
-            } else {
-                music.start();
-                playSongBtn.setImageResource(R.drawable.pause);
-                handler.postDelayed(updateSeekBar, 1000);
-            }
-            isPlaying = !isPlaying;
+            pausePlay();
         });
+        showSongBtn.setOnClickListener(v -> startActivity(new Intent(getApplicationContext(), SongListActivity.class)));
     }
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (music != null) {
-            music.release();
-            music = null;
-            handler.removeCallbacks(updateSeekBar);
+    void setResourcesWithMusic() {
+        currentSong = songList.get(MyMediaPlayer.currentIndex);
+        songNameTv.setText(currentSong.getTitle());
+    }
+
+    String milliSecondsToMinutes(String duration) {
+        Long milliSeconds = Long.parseLong(duration);
+        return String.format("%02d:%02d",
+                TimeUnit.MILLISECONDS.toMinutes(milliSeconds) % TimeUnit.HOURS.toMinutes(1),
+                TimeUnit.MILLISECONDS.toSeconds(milliSeconds) % TimeUnit.MINUTES.toSeconds(1));
+    }
+
+    private void playSong() {
+        mediaPlayer.reset();
+        try {
+            mediaPlayer.setDataSource(currentSong.getPath());
+            mediaPlayer.prepare();
+            mediaPlayer.start();
+            seekBar.setProgress(0);
+            seekBar.setMax(mediaPlayer.getDuration());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    boolean checkPermission() {
-        return ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED;
+    private void pausePlay() {
+        if (mediaPlayer.isPlaying()) {
+            music.pause();
+            playSongBtn.setImageResource(R.drawable.play);
+        } else {
+            music.start();
+            playSongBtn.setImageResource(R.drawable.pause);
+        }
     }
 
-    void requestPermission() {
-        if (ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this, Manifest.permission.READ_EXTERNAL_STORAGE))
-            Toast.makeText(MainActivity.this, "Read permission is required", Toast.LENGTH_SHORT).show();
-        else
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_PERMISSION_READ_EXTERNAL_STORAGE);
+    private void nextSong() {
+        if (MyMediaPlayer.currentIndex == songList.size() - 1) return;
+        MyMediaPlayer.currentIndex += 1;
+        mediaPlayer.reset();
+        setResourcesWithMusic();
     }
+
+    private void prevSong() {
+        if (MyMediaPlayer.currentIndex == 0) return;
+        MyMediaPlayer.currentIndex -= 1;
+        mediaPlayer.reset();
+        setResourcesWithMusic();
+    }
+
+    private void shuffleSong() {
+
+    }
+
 }
