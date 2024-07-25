@@ -1,5 +1,6 @@
 package com.project.musicapp.adapter;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.view.LayoutInflater;
@@ -49,8 +50,9 @@ public class SongsRecyclerViewAdapter extends RecyclerView.Adapter<SongsRecycler
         return new SongsRecyclerViewAdapter.ViewHolder(view);
     }
 
+    @SuppressLint("ResourceAsColor")
     @Override
-    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull ViewHolder holder, @SuppressLint("RecyclerView") int position) {
         AudioModel songData = songList.get(position);
         holder.textView.setText(songData.getTitle());
 

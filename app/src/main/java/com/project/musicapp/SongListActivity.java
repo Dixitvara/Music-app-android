@@ -2,16 +2,20 @@ package com.project.musicapp;
 
 import android.Manifest;
 import android.content.ContentResolver;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
+import android.provider.Settings;
 import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -38,8 +42,8 @@ public class SongListActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_song_list);
 
-        if (!checkPermission()) {
-            requestPermission();
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.READ_MEDIA_AUDIO}, REQUEST_PERMISSION_READ_EXTERNAL_STORAGE);
             return;
         }
 
@@ -85,15 +89,47 @@ public class SongListActivity extends AppCompatActivity {
             recyclerView.setAdapter(new SongsRecyclerViewAdapter(songList, getApplicationContext()));
     }
 
-    boolean checkPermission() {
-        return ContextCompat.checkSelfPermission(SongListActivity.this, android.Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(SongListActivity.this, android.Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED;
+    private void requestRuntimePermission() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_EXTERNAL_STORAGE)) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setMessage("Read media audio permission is needed to show you the locally available music list")
+                        .setTitle("Permission required")
+                        .setCancelable(false)
+                        .setPositiveButton("Ok", (dialog, which) -> {
+                            ActivityCompat.requestPermissions(SongListActivity.this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.READ_MEDIA_AUDIO}, 80);
+                            dialog.dismiss();
+                        })
+                        .setNegativeButton("cancel", (dialog, which) -> dialog.dismiss());
+                builder.show();
+            } else {
+                ActivityCompat.requestPermissions(SongListActivity.this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.READ_MEDIA_AUDIO}, 80);
+            }
+        }
     }
 
-    void requestPermission() {
-        if (ActivityCompat.shouldShowRequestPermissionRationale(SongListActivity.this, android.Manifest.permission.READ_EXTERNAL_STORAGE))
-            Toast.makeText(SongListActivity.this, "Read permission is required", Toast.LENGTH_SHORT).show();
-        else
-            ActivityCompat.requestPermissions(SongListActivity.this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_PERMISSION_READ_EXTERNAL_STORAGE);
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_PERMISSION_READ_EXTERNAL_STORAGE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Request Granted from overridden method", Toast.LENGTH_SHORT).show();
+            } else if (!ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_EXTERNAL_STORAGE)) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setMessage("This feature is unavailable because this uses the permission that you denied, please allow the permission from settings to use this feature")
+                        .setTitle("Permission required")
+                        .setCancelable(false)
+                        .setPositiveButton("Settings", (dialog, which) -> {
+                            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                            Uri uri = Uri.fromParts("package", getPackageName(), null);
+                            intent.setData(uri);
+                            startActivity(intent);
+                            dialog.dismiss();
+                        })
+                        .setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
+                builder.show();
+            } else
+                requestRuntimePermission();
+        }
     }
 }

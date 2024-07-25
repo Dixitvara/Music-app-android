@@ -1,41 +1,35 @@
 package com.project.musicapp;
 
-import android.Manifest;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
 import android.widget.ImageButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
 
+import com.airbnb.lottie.LottieAnimationView;
 import com.project.musicapp.singleton.MyMediaPlayer;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 public class MainActivity extends AppCompatActivity {
 
     TextView songNameTv, currentTimeTv, totalTimeTv;
     ImageButton previousSongBtn, nextSongBtn, playSongBtn, shuffle, showSongBtn;
-    MediaPlayer music;
     SeekBar seekBar;
     Handler handler;
-    Runnable updateSeekBar;
 
     AudioModel currentSong;
     MediaPlayer mediaPlayer = MyMediaPlayer.getInstance();
 
     ArrayList<AudioModel> songList;
-
-    private static final int REQUEST_PERMISSION_READ_EXTERNAL_STORAGE = 1;
+    LottieAnimationView animationView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,14 +45,16 @@ public class MainActivity extends AppCompatActivity {
         showSongBtn = findViewById(R.id.viewSongs);
         shuffle = findViewById(R.id.shuffle);
         seekBar = findViewById(R.id.seekBar);
+        animationView = findViewById(R.id.animationView);
 
-        music = new MediaPlayer();
         handler = new Handler();
 
         songList = (ArrayList<AudioModel>) getIntent().getSerializableExtra("SONGS");
 
         songNameTv.setSelected(true);
         setResourcesWithMusic();
+        playSong();
+        animationView.playAnimation();
 
         MainActivity.this.runOnUiThread(new Runnable() {
             @Override
@@ -79,7 +75,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser)
-                    music.seekTo(progress);
+                    mediaPlayer.seekTo(progress);
             }
 
             @Override
@@ -91,15 +87,17 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        playSongBtn.setOnClickListener(v -> {
-            pausePlay();
-        });
+        playSongBtn.setOnClickListener(v -> pausePlay());
+        nextSongBtn.setOnClickListener(v -> nextSong());
+        previousSongBtn.setOnClickListener(v -> prevSong());
+        shuffle.setOnClickListener(v -> shuffleSong());
         showSongBtn.setOnClickListener(v -> startActivity(new Intent(getApplicationContext(), SongListActivity.class)));
     }
 
     void setResourcesWithMusic() {
         currentSong = songList.get(MyMediaPlayer.currentIndex);
         songNameTv.setText(currentSong.getTitle());
+        totalTimeTv.setText(milliSecondsToMinutes(currentSong.getDuration()));
     }
 
     String milliSecondsToMinutes(String duration) {
@@ -115,6 +113,7 @@ public class MainActivity extends AppCompatActivity {
             mediaPlayer.setDataSource(currentSong.getPath());
             mediaPlayer.prepare();
             mediaPlayer.start();
+            animationView.animate();
             seekBar.setProgress(0);
             seekBar.setMax(mediaPlayer.getDuration());
         } catch (IOException e) {
@@ -124,10 +123,12 @@ public class MainActivity extends AppCompatActivity {
 
     private void pausePlay() {
         if (mediaPlayer.isPlaying()) {
-            music.pause();
+            mediaPlayer.pause();
+            animationView.pauseAnimation();
             playSongBtn.setImageResource(R.drawable.play);
         } else {
-            music.start();
+            mediaPlayer.start();
+            animationView.playAnimation();
             playSongBtn.setImageResource(R.drawable.pause);
         }
     }
@@ -137,6 +138,8 @@ public class MainActivity extends AppCompatActivity {
         MyMediaPlayer.currentIndex += 1;
         mediaPlayer.reset();
         setResourcesWithMusic();
+        playSong();
+        animationView.playAnimation();
     }
 
     private void prevSong() {
@@ -144,10 +147,17 @@ public class MainActivity extends AppCompatActivity {
         MyMediaPlayer.currentIndex -= 1;
         mediaPlayer.reset();
         setResourcesWithMusic();
+        playSong();
+        animationView.playAnimation();
     }
 
     private void shuffleSong() {
-
+        Random random = new Random();
+        int randomNum = random.nextInt(songList.size());
+        MyMediaPlayer.currentIndex = randomNum;
+        mediaPlayer.reset();
+        setResourcesWithMusic();
+        playSong();
+        animationView.playAnimation();
     }
-
 }
