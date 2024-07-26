@@ -68,6 +68,9 @@ public class MainActivity extends AppCompatActivity {
                     playSongBtn.setImageResource(R.drawable.pause);
                 else
                     playSongBtn.setImageResource(R.drawable.play);
+                if (mediaPlayer.getDuration() == seekBar.getProgress()) {
+                    nextSong();
+                }
             }
         });
 
@@ -113,7 +116,6 @@ public class MainActivity extends AppCompatActivity {
             mediaPlayer.setDataSource(currentSong.getPath());
             mediaPlayer.prepare();
             mediaPlayer.start();
-            animationView.animate();
             seekBar.setProgress(0);
             seekBar.setMax(mediaPlayer.getDuration());
         } catch (IOException e) {
@@ -134,12 +136,16 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void nextSong() {
-        if (MyMediaPlayer.currentIndex == songList.size() - 1) return;
+        if (MyMediaPlayer.currentIndex == songList.size() - 1) {
+            if (mediaPlayer.isPlaying()) return;
+            animationView.pauseAnimation();
+            return;
+        }
+
         MyMediaPlayer.currentIndex += 1;
         mediaPlayer.reset();
         setResourcesWithMusic();
         playSong();
-        animationView.playAnimation();
     }
 
     private void prevSong() {
@@ -158,6 +164,5 @@ public class MainActivity extends AppCompatActivity {
         mediaPlayer.reset();
         setResourcesWithMusic();
         playSong();
-        animationView.playAnimation();
     }
 }

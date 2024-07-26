@@ -29,12 +29,14 @@ public class SongsRecyclerViewAdapter extends RecyclerView.Adapter<SongsRecycler
         TextView textView;
         ImageView imageView;
         LinearLayout songItemLayout;
+        ImageView listPauseBtn;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             textView = itemView.findViewById(R.id.songNameItem);
             imageView = itemView.findViewById(R.id.songImageItem);
             songItemLayout = itemView.findViewById(R.id.songItemLayout);
+            listPauseBtn = itemView.findViewById(R.id.listPauseBtn);
         }
     }
 
@@ -56,8 +58,12 @@ public class SongsRecyclerViewAdapter extends RecyclerView.Adapter<SongsRecycler
         AudioModel songData = songList.get(position);
         holder.textView.setText(songData.getTitle());
 
-        if(MyMediaPlayer.currentIndex == position)
+        if(MyMediaPlayer.currentIndex == position){
             holder.textView.setTextColor(R.color.red);
+            holder.textView.setSelected(true);
+            holder.listPauseBtn.setVisibility(View.VISIBLE);
+        }
+
         holder.songItemLayout.setOnClickListener(v -> {
             MyMediaPlayer.getInstance().reset();
             MyMediaPlayer.currentIndex = position;
